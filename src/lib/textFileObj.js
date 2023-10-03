@@ -16,6 +16,13 @@ class obj {
         }
         return obj;
     }
+    static makeObjectIntoString(obj) {
+        let fileContent = '';
+        for (const prop in obj) {
+            fileContent += `${prop}\t${obj[prop]}\n`;
+        }
+        return fileContent;
+    }
     static createProp(obj, array) {
         const cleanArray = this.removeEmptyValues(array);
         if (cleanArray.length > 2) {

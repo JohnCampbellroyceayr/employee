@@ -7,6 +7,7 @@ import './subcomponents/styling/employee.css'
 
 import filePath from '../lib/fileLocations.js';
 import menu from './subcomponents/valuesMenu.jsx';
+import serverFiles from './actions/mainEmployees.js';
 
 
 class employeeValues extends Component {
@@ -28,6 +29,9 @@ class employeeValues extends Component {
         ]
     }
     componentDidMount() {
+        if (!serverFiles.exists(this.state.Employee["Number"])) {
+            this.changeEmployeeToNextLoggedInUser();
+        }
         this.updateMenus();
     }
     updateMenus = () => {
@@ -35,11 +39,12 @@ class employeeValues extends Component {
             const menus = [...prevState.menus];
             const buttons = [...prevState.buttons];
             const status = prevState.Employee["Status"];
+            console.log(status);
             buttons[0].disabled = (status == undefined || status == "undefined" || status == "Shift-Not-Started") ? false : true;
             buttons[1].disabled = (status == "Working") ? false : true;
-            buttons[2].disabled = (status == "Break") ? false : true;
-            buttons[3].disabled = (status != undefined) ? false : true;
-            buttons[4].disabled = (status != undefined) ? false : true;
+            buttons[2].disabled = (status == "On-Break") ? false : true;
+            buttons[3].disabled = (status != undefined && status != "undefined") ? false : true;
+            buttons[4].disabled = (status != undefined && status != "undefined") ? false : true;
             menus[0].text = this.startShiftMenu(0);
             menus[1].text = this.breakMenu(1);
             menus[3].text = this.signOutMenu(3);
@@ -78,7 +83,7 @@ class employeeValues extends Component {
     }
     breakMenu(index) {
         const text = (<h2>Set Employee {this.removeDashesFromText(this.state.Employee["Name"])} to break? (Enter for yes)</h2>);
-        const yesBtn = (<button onClick={() => {this.logAction("Start Break", "Break"); this.closeMenus()}} ref={this.state.menus[index].ref} className='pick-menu'>Yes</button>);
+        const yesBtn = (<button onClick={() => {this.logAction("Start Break", "On-Break"); this.closeMenus()}} ref={this.state.menus[index].ref} className='pick-menu'>Yes</button>);
         const noBtn = (<button onClick={() => {this.closeMenus()}} className='pick-menu'>No</button>);
         return (
             <>
@@ -108,6 +113,7 @@ class employeeValues extends Component {
             if (setStatus != "SwitchUser") {
                 this.setState(prevState => {
                     const emp = prevState.Employee;
+                    serverFiles.changeStatus(emp["Number"], setStatus);
                     emp["Status"] = setStatus;
                     emp["LastChanged"] = Time.getTime();
                     return { Employee: emp };
@@ -116,29 +122,53 @@ class employeeValues extends Component {
                 });
             }
             else {
-                const files = this.filterFileNames(file.getFileNames(filePath("employeeLocalDir")));
-                if (files.length > 0) {
-                    console.log(files);
-                    var index;
-                    const currentFile = this.state.Employee["Number"] + ".txt";
-                    this.switchEmployee(files[0]);
-                    file.delete(filePath("employeeLocalDir") + currentFile);
+                if (message == "End Shift") {
+                    serverFiles.changeStatus(employee, "End Shift");
                 }
-                else {
-                    this.setState(prevState => {
-                        const employee = prevState.Employee;
-                        employee["Number"] = '';
-                        employee["Name"] = '';
-                        employee["Status"] = '';
-                        employee["LastChanged"] = '';
-                        return { Employee: employee };
-                    }, () => {
-                        this.save(this.state.Employee, filePath("employeeLocal"));
-                        this.setState({ Employee: obj.get(filePath("employeeLocal")) });
-                        this.updateMenus();
-                    });
-                }
+                this.changeEmployeeToNextLoggedInUser();
             }
+        }
+    }
+
+    changeEmployeeToNextLoggedInUser = () => {
+        const files = this.filterFileNames(file.getFileNames(filePath("employeeLocalDir")));
+        if (files.length > 0 || (this.state.Employee["Number"] != undefined && this.state.Employee["Number"] != "undefined")) {
+            console.log(files);
+            var index;
+            
+            const currentFile = this.state.Employee["Number"] + ".txt";
+            try {
+                this.switchEmployee(files[0].replace(".txt", ""));
+                file.delete(filePath("employeeLocalDir") + currentFile);
+            }
+            catch {
+                this.setState(prevState => {
+                    const employee = {};
+                    employee["Number"] = 'undefined';
+                    employee["Name"] = 'undefined';
+                    employee["Status"] = 'undefined';
+                    employee["LastChanged"] = 'undefined';
+                    this.save(employee, filePath("employeeLocal"))
+                    return { Employee: employee };
+                }, () => {
+                    this.updateMenus();
+                });
+            }
+        }
+        else {
+            this.setState(prevState => {
+                const employee = prevState.Employee;
+                employee["Number"] = '';
+                employee["Name"] = '';
+                employee["Status"] = '';
+                employee["LastChanged"] = '';
+                return { Employee: employee };
+            }, () => {
+                this.save(this.state.Employee, filePath("employeeLocal"));
+                this.setState({ Employee: obj.get(filePath("employeeLocal")) });
+                console.log(this.state.Employee);
+                this.updateMenus();
+            });
         }
     }
 
@@ -147,7 +177,7 @@ class employeeValues extends Component {
             const newEmployee = prevState.Employee;
             newEmployee["Status"] = "Working";
             newEmployee["LastChanged"] = Time.getTime();    
-
+            serverFiles.changeStatus(newEmployee["Number"], "Working");
             return { Employee: newEmployee };
         }, () => {
 
@@ -199,26 +229,27 @@ class employeeValues extends Component {
         file.createFile(filePath, fileContent);
     }
 
-    switchEmployee = (fileName) => {
+    switchEmployee = (number) => {
         this.saveCurrentEmployee();
-        const newEmployee = obj.get(filePath("employeeLocalDir") + fileName);
-        this.save(newEmployee, filePath("employeeLocal"));
-        this.setState({ Employee: newEmployee }, () => {
-            this.updateMenus();
-        });
+        const newEmployee = serverFiles.getEmployee(number);
+        if (newEmployee != false) {
+            this.save(newEmployee, filePath("employeeLocal"));
+            this.setState({ Employee: newEmployee }, () => {
+                this.updateMenus();
+            });
+        }
     }
     //asdf
     createNewEmployeeAndStartShift = (employeeNumber) => {
         const employeeName = obj.findNameValue(filePath("employeeList"), employeeNumber);
         if (employeeName !== false) {
             this.saveCurrentEmployee();
-            let newEmployee = {};
-            newEmployee["Number"] = employeeNumber;
-            newEmployee["Name"] = employeeName;
-            newEmployee["Status"] = "Working";
-            newEmployee["LastChanged"] = Time.getTime();
+
+            const newEmployee = serverFiles.create(employeeNumber, employeeName, "Working");
+
             this.save(newEmployee, filePath("employeeLocal"));
             const employee = newEmployee["Number"];
+
 
             const machine = obj.get(filePath("machineLocal"))["Machine"];
             let writeString = employee + '\t' + "Start Shift" + '\t' + Time.getDateTime();
@@ -244,13 +275,9 @@ class employeeValues extends Component {
             newEmployee["Status"] = "Shift-Not-Started";
             newEmployee["LastChanged"] = Time.getTime();
             this.save(newEmployee, filePath("employeeLocal"));
-            const employee = newEmployee["Number"];
-
-            const machine = obj.get(filePath("machineLocal"))["Machine"];
-            // let writeString = employee + '\t' + "Start Shift" + '\t' + Time.getDateTime();
-            // writeString = employee + '\t' + "Started on" + '\t' + machine + '\t' + Time.getDateTime() + '\n' + writeString;
-            // file.addToFile(filePath("employeeLog"), writeString);
-
+            
+            serverFiles.create(employeeNumber, employeeName, newEmployee["Status"]);
+            
             this.setState({ Employee: newEmployee }, () => {
                 this.updateMenus();
             });
@@ -262,7 +289,8 @@ class employeeValues extends Component {
     }
     filterFileNames = (files) => {
         for (let i = 0; i < files.length; i++) {
-            if(files[i] == "employee-data-macro.txt" || files[i] == "employee.txt" || files[i] == this.state.Employee["Number"] + ".txt") {
+            const name = files[i].split(".")[0];
+            if((name == "employee-data-macro" || name == "employee" || name == this.state.Employee["Number"]) || (serverFiles.exists(name) == false)) {
                 files.splice(i, 1);
                 i--;
             }            
@@ -278,10 +306,10 @@ class employeeValues extends Component {
     
 
     removeDashesFromText(text) {
-        if (text != undefined) {
+        if (text != undefined && text != "undefined") {
             return text.replaceAll("-", " ");
         }
-        return text;
+        return '';
     }
 
     renderEmployeeMenu(ref) {
@@ -291,7 +319,7 @@ class employeeValues extends Component {
             const number = employeeObj["Number"];
             const name = employeeObj["Name"];
             if (number != undefined) {
-                return (<div onClick={() => this.switchEmployee(file)}>{number}{" "}{this.removeDashesFromText(name)}</div>)
+                return (<div onClick={() => this.switchEmployee(employeeObj["Number"])}>{number}{" "}{this.removeDashesFromText(name)}</div>)
             }
             else {
                 return '';
@@ -314,7 +342,7 @@ class employeeValues extends Component {
         return (
             <h2>
                 Employee<br></br>
-                {employee["Number"]}
+                {this.removeDashesFromText(employee["Number"])}
                 {" "}
                 {this.removeDashesFromText(employee["Name"])} <br></br>
                 {"Status: "}

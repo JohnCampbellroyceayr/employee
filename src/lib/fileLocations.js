@@ -25,6 +25,8 @@ export default function filePath(locationName) {
         case "employeeLog":
             return files.curPathServer + files.employeeLog;
             break;
+        case "currentEmployees":
+            return files.curPathServer + files.employeeCurrentLoggedIn
         default:
             break;
     }
@@ -43,5 +45,6 @@ var files = {
     employeeFileDir: '\\local files\\employee\\',
     employeeList: '\\employees\\EmployeeList.txt',
     employeeLog: '\\employees\\EmployeeLog.txt',
+    employeeCurrentLoggedIn: '\\employees\\Current Employees\\'
 }
 

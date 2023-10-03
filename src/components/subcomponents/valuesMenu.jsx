@@ -43,7 +43,7 @@ class menu extends Component {
            <React.Fragment>
                 <div className={menu.class} style={{display: (menu.hidden) ? "none" : "block"}}>
                     {menu.text}
-                    <button onClick={this.closeMenu} className='close'>Close Menu</button>
+                    <button onClick={this.closeMenu} className='close'>Cancel</button>
                 </div>
                 <Button
                     menu={this.menu}
