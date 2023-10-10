@@ -94,12 +94,22 @@ class employeeValues extends Component {
         )
     }
     signOutMenu(index) {
-        const text = (<h2>Log out Employee {this.removeDashesFromText(this.state.Employee["Name"])}?) (Enter for yes)</h2>);
-        const yesBtn = (<button onClick={() => {this.logAction("End Shift", "SwitchUser"); this.closeMenus()}} ref={this.state.menus[index].ref} className='pick-menu'>Yes</button>);
+        const messageNoMachinesRunning = (<h2>Log out Employee {this.removeDashesFromText(this.state.Employee["Name"])}?) (Enter for yes)</h2>);
+        const messageMachineRunning = (<div>Warning, you are still logged in to at least one machine, including </div>)
+        const yesBtn = (<button onClick={() => {this.logAction("End Shift", "SwitchUser"); this.closeMenus();}} ref={this.state.menus[index].ref} className='pick-menu'>Yes</button>);
         const noBtn = (<button onClick={() => {this.closeMenus()}} className='pick-menu'>No</button>);
+        const warningMessageMachinesStillRunning = serverFiles.deleteMessage(this.state.Employee["Number"]);
+        const message = (warningMessageMachinesStillRunning == false) ? messageNoMachinesRunning : (
+            <>
+                {messageMachineRunning}
+                {warningMessageMachinesStillRunning}<br></br>
+                Do you still want to logout?<br></br>
+                If you forgot to logout, select "No" or "Cancel", close this window, open the machine menu and logout the machine(s) there.
+            </>
+        );
         return (
             <>
-                {text}<br></br>
+                {message}<br></br>
                 {yesBtn}
                 {noBtn}
             </>

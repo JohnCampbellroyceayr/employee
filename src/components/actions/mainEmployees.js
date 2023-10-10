@@ -43,15 +43,12 @@ class serverFiles {
         const currentEmployees = file.getFileNames(path);
         if (!this.numberDoesNotExist(number, currentEmployees)) {
             const textFilePath = path + number + ".txt";
-            console.log("asdf");
             if (newStatus != "End Shift") {
                 const employee = obj.makeStrIntoObject(file.read(textFilePath));
                 employee["Status"] = newStatus;         
                 file.createFile(textFilePath, obj.makeObjectIntoString(employee));
             }
             else {
-            console.log("asdf");
-
                 file.delete(textFilePath);
             }
         }
@@ -70,6 +67,18 @@ class serverFiles {
         const path = filePath("currentEmployees");
         const currentEmployees = file.getFileNames(path);
         if (this.numberDoesNotExist(number, currentEmployees)) {
+            return false;
+        }
+    }
+    static deleteMessage(employee) {
+        const path = filePath("currentEmployees");
+        const currentEmployees = file.getFileNames(path);
+        if (!this.numberDoesNotExist(employee, currentEmployees)) {
+            const newEmployee = obj.get(path + employee + ".txt");
+            console.log(newEmployee);
+            if (newEmployee["CurrentMachine"] != undefined && newEmployee["CurrentMachine"] != "undefined" && newEmployee["CurrentMachine"] != "null" && newEmployee["CurrentMachine"] != null) {
+                return newEmployee["CurrentMachine"];
+            }
             return false;
         }
     }
